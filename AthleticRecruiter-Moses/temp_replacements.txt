@@ -1,0 +1,15 @@
+Replacement 1 (Line 443):
+<TableCell>{coach.school}</TableCell>
+
+Should be replaced with:
+<TableCell>
+  <SchoolWithLogo school={coach.school} />
+</TableCell>
+
+Replacement 2 (Line 659):
+<TableCell>{coach.school}</TableCell>
+
+Should be replaced with:
+<TableCell>
+  <SchoolWithLogo school={coach.school} />
+</TableCell>

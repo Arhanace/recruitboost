@@ -1,0 +1,415 @@
+      {/* Compose Email Dialog */}
+      <Dialog open={isComposeOpen} onOpenChange={onDialogOpenChange}>
+        <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold">Compose Email</DialogTitle>
+            <DialogDescription>
+              Create personalized outreach to college coaches
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-4">
+            {/* Left Column - Recipients */}
+            <div className="lg:col-span-1 border-r pr-4">
+              <h3 className="text-lg font-medium mb-3 flex items-center">
+                <UserRound className="h-4 w-4 mr-2" />
+                Recipients
+                <Badge className="ml-2" variant="secondary">{selectedCoaches.length}</Badge>
+              </h3>
+              
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Input 
+                    type="text" 
+                    placeholder="Search coaches..." 
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="text-sm"
+                  />
+                </div>
+                
+                <div className="flex flex-wrap gap-2">
+                  <Select
+                    value={sportFilter}
+                    onValueChange={setSportFilter}
+                  >
+                    <SelectTrigger className="w-full text-sm">
+                      <SelectValue placeholder="Filter by sport" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all-sports">All Sports</SelectItem>
+                      {uniqueSports.map((sport) => (
+                        <SelectItem key={sport} value={sport}>{sport}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  
+                  <Select
+                    value={statusFilter}
+                    onValueChange={setStatusFilter}
+                  >
+                    <SelectTrigger className="w-full text-sm">
+                      <SelectValue placeholder="Filter by status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all-statuses">All Statuses</SelectItem>
+                      {uniqueStatuses.map((status) => (
+                        <SelectItem key={status} value={status}>{status}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  
+                  <div className="w-full mt-1">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                      className="w-full flex items-center justify-between" 
+                      type="button"
+                    >
+                      <span>Advanced Filters</span>
+                      {showAdvancedFilters ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                  
+                  {showAdvancedFilters && (
+                    <div className="space-y-2 w-full p-2 bg-gray-50 rounded-md border">
+                      <Select
+                        value={divisionFilter}
+                        onValueChange={setDivisionFilter}
+                      >
+                        <SelectTrigger className="w-full text-sm">
+                          <SelectValue placeholder="Filter by division" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all-divisions">All Divisions</SelectItem>
+                          {uniqueDivisions.map((division) => (
+                            <SelectItem key={division} value={division}>{division}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      
+                      <Select
+                        value={stateFilter}
+                        onValueChange={setStateFilter}
+                      >
+                        <SelectTrigger className="w-full text-sm">
+                          <SelectValue placeholder="Filter by state" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all-states">All States</SelectItem>
+                          {uniqueStates.map((state) => (
+                            <SelectItem key={state} value={state}>{state}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={resetFilters}
+                        className="w-full mt-2 text-xs"
+                      >
+                        Reset All Filters
+                      </Button>
+                    </div>
+                  )}
+                </div>
+                
+                <div className="flex items-center mb-2">
+                  <Checkbox 
+                    id="select-all" 
+                    checked={selectAll}
+                    onCheckedChange={handleSelectAll}
+                  />
+                  <Label htmlFor="select-all" className="ml-2 text-sm font-medium">
+                    Select All ({filteredCoaches?.length || 0})
+                  </Label>
+                </div>
+              </div>
+              
+              <ScrollArea className="h-[300px] mt-2 rounded-md">
+                <div className="space-y-1">
+                  {filteredCoaches?.map((coach: Coach) => (
+                    <div key={coach.id} className="flex items-start p-2 hover:bg-gray-50 rounded">
+                      <Checkbox 
+                        className="mt-1"
+                        checked={selectedCoaches.includes(coach.id)}
+                        onCheckedChange={(checked) => 
+                          handleCoachCheckbox(coach.id, !!checked)
+                        }
+                      />
+                      <div className="ml-3 flex-1 min-w-0">
+                        <div className="font-medium text-sm">{coach.firstName} {coach.lastName}</div>
+                        <div className="text-xs text-gray-500 truncate">{coach.email}</div>
+                        <div className="flex items-center gap-2 mt-1">
+                          <div className="text-xs text-gray-700">{coach.school}</div>
+                          <Badge
+                            variant={coach.status === "Interested" ? "default" : 
+                                    coach.status === "Not Available" ? "destructive" : 
+                                    "secondary"}
+                            className="text-[10px] py-0 px-1"
+                          >
+                            {coach.status || "New"}
+                          </Badge>
+                        </div>
+                      </div>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        className="text-xs h-6"
+                        onClick={() => handleSelectPreviewCoach(coach)}
+                      >
+                        Preview
+                      </Button>
+                    </div>
+                  ))}
+                  
+                  {filteredCoaches?.length === 0 && (
+                    <div className="py-6 text-center text-gray-500 text-sm">
+                      No coaches match your filters
+                    </div>
+                  )}
+                </div>
+              </ScrollArea>
+              
+              <input
+                type="hidden"
+                value={selectedCoaches.join(',')}
+                onChange={(e) => form.setValue('coachIds', e.target.value)}
+              />
+            </div>
+            
+            {/* Right Column - Email Compose */}
+            <div className="lg:col-span-2">
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 justify-between">
+                  <div className="flex-1">
+                    <Label>Template</Label>
+                    <Select 
+                      onValueChange={(value) => handleTemplateSelect(value)}
+                      value={selectedTemplate || ""}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a template" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Array.isArray(templates) && templates.map((template: EmailTemplate) => (
+                          <SelectItem 
+                            key={template.id} 
+                            value={template.id.toString()}
+                          >
+                            {template.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="flex-shrink-0">
+                    <Button
+                      type="button"
+                      variant={isUsingAI ? "default" : "outline"}
+                      onClick={() => setIsUsingAI(!isUsingAI)}
+                      className="gap-2"
+                    >
+                      <Sparkles className="h-4 w-4" />
+                      AI Writer
+                    </Button>
+                  </div>
+                </div>
+                
+                {isUsingAI && (
+                  <Card className="mb-4 border-primary/30 shadow-sm">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-lg flex items-center">
+                        <Sparkles className="h-4 w-4 mr-2 text-primary" />
+                        AI Email Generator
+                      </CardTitle>
+                      <CardDescription>
+                        Automatically create a personalized email using your profile data
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-2">
+                          <Label className="w-24">Email Tone</Label>
+                          <Select
+                            value={aiForm.getValues().tone}
+                            onValueChange={(value) => aiForm.setValue('tone', value as any)}
+                          >
+                            <SelectTrigger className="flex-1">
+                              <SelectValue placeholder="Select a tone" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="professional">Professional</SelectItem>
+                              <SelectItem value="friendly">Friendly</SelectItem>
+                              <SelectItem value="persuasive">Persuasive</SelectItem>
+                              <SelectItem value="enthusiastic">Enthusiastic</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                          <Label className="w-24">Focus On</Label>
+                          <Select
+                            value={aiForm.getValues().focus}
+                            onValueChange={(value) => aiForm.setValue('focus', value as any)}
+                          >
+                            <SelectTrigger className="flex-1">
+                              <SelectValue placeholder="Select focus" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="academic">Academic Achievements</SelectItem>
+                              <SelectItem value="athletic">Athletic Achievements</SelectItem>
+                              <SelectItem value="both">Both Equally</SelectItem>
+                              <SelectItem value="program">Program Fit</SelectItem>
+                              <SelectItem value="culture">Team Culture</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                          <Label className="w-24">Length</Label>
+                          <Select
+                            value={aiForm.getValues().length}
+                            onValueChange={(value) => aiForm.setValue('length', value as any)}
+                          >
+                            <SelectTrigger className="flex-1">
+                              <SelectValue placeholder="Select length" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="brief">Brief (2-3 paragraphs)</SelectItem>
+                              <SelectItem value="standard">Standard (3-4 paragraphs)</SelectItem>
+                              <SelectItem value="detailed">Detailed (4-5 paragraphs)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        <Button 
+                          type="button"
+                          disabled={aiGenerateLoading}
+                          onClick={handleSubmitAI(handleGenerateAI)}
+                          className="w-full mt-2"
+                        >
+                          {aiGenerateLoading ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                              Generating Email...
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="h-4 w-4 mr-1" />
+                              Generate Email
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+                
+                <div>
+                  <Label>Subject Line</Label>
+                  <Input
+                    placeholder="Write a compelling subject line"
+                    value={form.getValues().subject}
+                    onChange={(e) => form.setValue('subject', e.target.value)}
+                  />
+                </div>
+                
+                <div>
+                  <Label>Message</Label>
+                  <Textarea
+                    className="min-h-[200px]"
+                    placeholder="Write your personalized message to the coach(es)"
+                    value={form.getValues().body}
+                    onChange={(e) => form.setValue('body', e.target.value)}
+                  />
+                  {previewCoach && (
+                    <div className="mt-2 flex gap-2 items-center text-sm text-gray-500">
+                      <AlertCircle className="h-3 w-3" />
+                      <span>Preview mode: showing personalized email for {previewCoach.firstName} {previewCoach.lastName}</span>
+                    </div>
+                  )}
+                </div>
+                
+                <div className="flex items-center gap-3 mt-4">
+                  <div className="space-x-2">
+                    <Checkbox
+                      id="enable-follow-up"
+                      checked={enableFollowUp}
+                      onCheckedChange={(checked) => setEnableFollowUp(!!checked)}
+                    />
+                    <Label htmlFor="enable-follow-up" className="text-sm">
+                      Schedule automatic follow-up
+                    </Label>
+                  </div>
+                  
+                  {enableFollowUp && (
+                    <div className="flex items-center gap-2">
+                      <Label className="text-sm whitespace-nowrap">after</Label>
+                      <Select
+                        value={followUpDays.toString()}
+                        onValueChange={(value) => setFollowUpDays(parseInt(value))}
+                      >
+                        <SelectTrigger className="w-[90px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(days => (
+                            <SelectItem key={days} value={days.toString()}>
+                              {days} {days === 1 ? 'day' : 'days'}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </div>
+                
+                <div className="flex justify-between mt-6">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setIsComposeOpen(false)}
+                  >
+                    Cancel
+                  </Button>
+                  
+                  <div className="space-x-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        const values = form.getValues();
+                        values.status = "draft";
+                        if (enableFollowUp)
+                          values.followUpDays = followUpDays;
+                        onSubmit(values);
+                      }}
+                    >
+                      <Save className="h-4 w-4 mr-2" />
+                      Save as Draft
+                    </Button>
+                    
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        const values = form.getValues();
+                        values.status = "sent";
+                        if (enableFollowUp)
+                          values.followUpDays = followUpDays;
+                        onSubmit(values);
+                      }}
+                    >
+                      <SendIcon className="h-4 w-4 mr-2" />
+                      Send Now
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>

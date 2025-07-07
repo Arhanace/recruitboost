@@ -1,0 +1,1282 @@
+import { useState, useEffect } from "react";
+import { Link } from "wouter";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useLocation } from "wouter";
+import { z } from "zod";
+import { useToast } from "@/hooks/use-toast";
+import { queryClient, apiRequest } from "@/lib/queryClient";
+import { createEmailBody, formatDate } from "@/lib/utils";
+import { Coach, EmailTemplate } from "@shared/schema";
+import { 
+  SendIcon, 
+  CheckCircleIcon,
+  SearchIcon,
+  FilterIcon,
+  Sparkles,
+  AlertCircle,
+  UserRound,
+  InfoIcon,
+  Calendar as CalendarIcon,
+  Clock,
+  Save,
+  Trash2,
+  PlusCircle,
+  Mail,
+  MailOpen,
+  MailCheck,
+  MailX,
+  Clock3,
+  ChevronUp,
+  ChevronDown
+} from "lucide-react";
+import { SchoolWithLogo } from "@/components/ui/school-logo";
+
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuPortal,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
+
+const emailFormSchema = z.object({
+  coachIds: z.array(z.coerce.number()).min(1, "At least one coach must be selected"),
+  subject: z.string().min(1, "Subject is required"),
+  body: z.string().min(1, "Body is required"),
+  templateId: z.coerce.number().optional(),
+  isDraft: z.boolean().optional(),
+  followUpDays: z.coerce.number().optional(),
+  enableFollowUp: z.boolean().optional(),
+});
+
+const aiGeneratorSchema = z.object({
+  coachDetails: z.string().optional(),
+  tone: z.enum(["professional", "friendly", "enthusiastic", "formal"]).default("professional"),
+});
+
+type EmailFormValues = z.infer<typeof emailFormSchema>;
+type AIGeneratorValues = z.infer<typeof aiGeneratorSchema>;
+
+export default function Emails() {
+  const [location] = useLocation();
+  const [isComposeOpen, setIsComposeOpen] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
+  const [previewMode, setPreviewMode] = useState(false);
+  const [previewCoach, setPreviewCoach] = useState<Coach | null>(null);
+  const [sportFilter, setSportFilter] = useState<string>("all-sports");
+  
+  // Fetch user profile to get their sport
+  const { data: userProfile } = useQuery({
+    queryKey: ["/api/user"],
+  });
+  const [statusFilter, setStatusFilter] = useState<string>("all-statuses");
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [selectedCoaches, setSelectedCoaches] = useState<number[]>([]);
+  const [selectAll, setSelectAll] = useState(false);
+  const [isUsingAI, setIsUsingAI] = useState(false);
+  const [aiResponse, setAIResponse] = useState<{ subject: string; body: string } | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [aiError, setAIError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [emailsPerPage] = useState<number>(10); // Show 10 emails per page
+  const [activeMailbox, setActiveMailbox] = useState<string>("sent");
+  const { toast } = useToast();
+  
+  // Check for mailbox parameter in URL on component mount
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const mailboxParam = urlParams.get('mailbox');
+    if (mailboxParam && ['sent', 'responses', 'drafts', 'scheduled'].includes(mailboxParam)) {
+      setActiveMailbox(mailboxParam);
+    }
+  }, [location]);
+  
+  // Schedule fields
+  const [isScheduleMode, setIsScheduleMode] = useState(false);
+  const [scheduleDate, setScheduleDate] = useState<Date | undefined>(undefined);
+  const [scheduleTime, setScheduleTime] = useState<string>("12:00");
+
+  // Auto follow-up fields
+  const [enableFollowUp, setEnableFollowUp] = useState(false);
+  const [followUpDays, setFollowUpDays] = useState<number>(3);
+  
+  // Fetch data
+  const { data: coaches, isLoading: isLoadingCoaches } = useQuery({
+    queryKey: ["/api/coaches"],
+  });
+  
+  // Set default sport filter based on user's sport when coaches are loaded
+  useEffect(() => {
+    if (userProfile && userProfile.sport && Array.isArray(coaches) && coaches.length > 0) {
+      // Check if user's sport exists in the available coach sports
+      const userSport = userProfile.sport;
+      const sportExists = coaches.some((coach: Coach) => coach.sport === userSport);
+      
+      if (sportExists) {
+        setSportFilter(userSport);
+        console.log("Setting sport filter to user's sport:", userSport);
+      }
+    }
+  }, [userProfile, coaches]);
+
+  // Fetch email templates
+  const { data: templates, isLoading: isLoadingTemplates } = useQuery({
+    queryKey: ["/api/email-templates"],
+  });
+
+  // Fetch sent emails
+  const { data: emails, isLoading: isLoadingEmails } = useQuery({
+    queryKey: ["/api/emails"],
+  });
+  
+  // Get paginated emails based on current mailbox
+  const indexOfLastEmail = currentPage * emailsPerPage;
+  const indexOfFirstEmail = indexOfLastEmail - emailsPerPage;
+  
+  // Filter emails based on active mailbox
+  const filteredEmails = Array.isArray(emails) 
+    ? emails.filter((email: any) => {
+        if (activeMailbox === "sent") return !email.isDraft && !email.scheduledDate;
+        if (activeMailbox === "responses") return email.status === "replied";
+        if (activeMailbox === "drafts") return email.isDraft === true;
+        if (activeMailbox === "scheduled") return !!email.scheduledDate;
+        return true;
+      }) 
+    : [];
+  
+  const currentEmails = filteredEmails.slice(indexOfFirstEmail, indexOfLastEmail);
+  const totalPages = Math.max(Math.ceil(filteredEmails.length / emailsPerPage), 1);
+  
+  const form = useForm<EmailFormValues>({
+    resolver: zodResolver(emailFormSchema),
+    defaultValues: {
+      coachIds: [],
+      subject: "",
+      body: "",
+      templateId: undefined,
+      isDraft: false,
+      enableFollowUp: false,
+      followUpDays: 3,
+    },
+  });
+
+  const aiForm = useForm<AIGeneratorValues>({
+    resolver: zodResolver(aiGeneratorSchema),
+    defaultValues: {
+      coachDetails: "",
+      tone: "professional",
+    },
+  });
+
+  // Advanced filter options
+  const [divisionFilter, setDivisionFilter] = useState<string>("all-divisions");
+  const [stateFilter, setStateFilter] = useState<string>("all-states");
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState<boolean>(false);
+  
+  // Function to toggle advanced filters - using direct state value to avoid issues
+  const toggleAdvancedFilters = () => {
+    console.log("Toggling advanced filters, current state:", showAdvancedFilters);
+    const newState = !showAdvancedFilters;
+    console.log("Setting to new state:", newState);
+    setShowAdvancedFilters(newState);
+  };
+  
+  // Filter coaches based on search and filters
+  const filteredCoaches = Array.isArray(coaches) 
+    ? coaches.filter((coach: Coach) => {
+        const matchesSport = sportFilter === "all-sports" || coach.sport === sportFilter;
+        const matchesStatus = statusFilter === "all-statuses" || coach.status === statusFilter;
+        const matchesDivision = divisionFilter === "all-divisions" || coach.division === divisionFilter;
+        const matchesState = stateFilter === "all-states" || 
+          (coach.state && coach.state === stateFilter);
+        
+        const searchLower = searchQuery.toLowerCase();
+        const matchesSearch = searchQuery === "" ||
+          coach.firstName.toLowerCase().includes(searchLower) ||
+          coach.lastName.toLowerCase().includes(searchLower) ||
+          coach.school.toLowerCase().includes(searchLower) ||
+          coach.email.toLowerCase().includes(searchLower);
+        
+        return matchesSport && matchesStatus && matchesDivision && matchesState && matchesSearch;
+      })
+    : [];
+
+  // Get unique values for filter dropdowns
+  const uniqueSports = Array.isArray(coaches) 
+    ? [...new Set(coaches.map((coach: Coach) => coach.sport || ''))]
+    : [];
+  
+  const uniqueStatuses = Array.isArray(coaches)
+    ? [...new Set(coaches.map((coach: Coach) => coach.status || '').filter(Boolean))]
+    : [];
+    
+  const uniqueDivisions = Array.isArray(coaches)
+    ? [...new Set(coaches.map((coach: Coach) => coach.division || '').filter(Boolean))]
+    : [];
+    
+  const uniqueStates = Array.isArray(coaches)
+    ? [...new Set(coaches.map((coach: Coach) => coach.state || '').filter(Boolean))]
+    : [];
+
+  // Function to send emails
+  const sendEmailMutation = useMutation({
+    mutationFn: (data: EmailFormValues) => {
+      return apiRequest('POST', '/api/emails/send', data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/emails'] });
+      toast({
+        title: "Email Sent",
+        description: `Successfully sent to ${selectedCoaches.length} coach${selectedCoaches.length > 1 ? 'es' : ''}`,
+      });
+      setIsComposeOpen(false);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error Sending Email",
+        description: error.message || "An error occurred when sending the email",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Function to draft emails
+  const saveDraftMutation = useMutation({
+    mutationFn: (data: EmailFormValues) => {
+      return apiRequest('POST', '/api/emails/draft', data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/emails'] });
+      toast({
+        title: "Draft Saved",
+        description: "Your email draft has been saved",
+      });
+      setIsComposeOpen(false);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error Saving Draft",
+        description: error.message || "An error occurred when saving the draft",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Function to schedule emails
+  const scheduleEmailMutation = useMutation({
+    mutationFn: (data: EmailFormValues & { scheduledDate?: Date }) => {
+      return apiRequest('POST', '/api/emails/schedule', data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/emails'] });
+      toast({
+        title: "Email Scheduled",
+        description: `Email has been scheduled to send automatically`,
+      });
+      setIsComposeOpen(false);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error Scheduling Email",
+        description: error.message || "An error occurred when scheduling the email",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // AI Email Generator
+  const generateAIEmailMutation = useMutation({
+    mutationFn: async (data: AIGeneratorValues) => {
+      const { data: user } = await queryClient.fetchQuery({
+        queryKey: ["/api/user"],
+      });
+      
+      const selectedCoach = Array.isArray(coaches) 
+        ? coaches.find((c: Coach) => c.id === selectedCoaches[0])
+        : null;
+      
+      const res = await apiRequest('POST', '/api/ai/generate-email', {
+        studentInfo: {
+          name: user ? `${user.firstName} ${user.lastName}` : '',
+          sport: user?.sport || '',
+          stats: user?.stats || {},
+          highlights: user?.highlights || '',
+          graduationYear: user?.graduationYear || '',
+          gpa: user?.gpa || '',
+          testScores: user?.testScores || '',
+          academicHonors: user?.academicHonors || '',
+          bio: user?.bio || '',
+        },
+        sportInfo: user?.sport || '',
+        coachDetails: {
+          name: selectedCoach ? `${selectedCoach.firstName} ${selectedCoach.lastName}` : '',
+          school: selectedCoach?.school || '',
+          sport: selectedCoach?.sport || '',
+        },
+        tone: data.tone,
+      });
+      
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setAIResponse(data);
+      setIsGenerating(false);
+      
+      // Set the form values
+      form.setValue('subject', data.subject);
+      form.setValue('body', data.body);
+    },
+    onError: (error: any) => {
+      setIsGenerating(false);
+      setAIError(error.message || "An error occurred generating the email");
+      
+      toast({
+        title: "AI Generation Failed",
+        description: error.message || "Failed to generate email with AI",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Handle template selection
+  const handleTemplateSelect = (templateId: string) => {
+    setSelectedTemplate(templateId);
+    
+    if (!templateId) return;
+    
+    const template = Array.isArray(templates)
+      ? templates.find((t: any) => t.id.toString() === templateId)
+      : null;
+    
+    if (!template) return;
+    
+    // If a coach is selected, personalize the template
+    if (selectedCoaches.length === 1 && previewCoach) {
+      const coach = Array.isArray(coaches)
+        ? coaches.find((c: any) => c.id === selectedCoaches[0])
+        : null;
+      
+      if (coach) {
+        form.setValue('subject', template.subject);
+        form.setValue('body', createEmailBody(template.body, {
+          firstName: coach.firstName,
+          lastName: coach.lastName,
+          school: coach.school,
+        }));
+      }
+    } else {
+      // Just set the template content without personalization
+      form.setValue('subject', template.subject);
+      form.setValue('body', template.body);
+    }
+  };
+
+  // Handle AI email generation
+  const handleGenerateAI = (data: AIGeneratorValues) => {
+    if (selectedCoaches.length === 0) {
+      toast({
+        title: "No Coach Selected",
+        description: "Please select at least one coach before generating an AI email",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setIsGenerating(true);
+    setAIError(null);
+    generateAIEmailMutation.mutate(data);
+  };
+
+  // Handle selecting a coach to preview the email for
+  const handleSelectPreviewCoach = (coach: Coach) => {
+    setPreviewCoach(coach);
+    setPreviewMode(true);
+  };
+
+  // Handle checkbox for selecting a coach
+  const handleCoachCheckbox = (coachId: number, checked: boolean) => {
+    if (checked) {
+      setSelectedCoaches(prev => [...prev, coachId]);
+    } else {
+      setSelectedCoaches(prev => prev.filter(id => id !== coachId));
+    }
+  };
+
+  // Handle select all coaches checkbox
+  const handleSelectAll = (checked: boolean) => {
+    setSelectAll(checked);
+    
+    if (checked && Array.isArray(filteredCoaches) && filteredCoaches.length > 0) {
+      setSelectedCoaches(filteredCoaches.map((coach: Coach) => coach.id));
+    } else {
+      setSelectedCoaches([]);
+    }
+  };
+
+  // Handle saving draft email
+  const handleSaveDraft = () => {
+    const values = form.getValues();
+    const { subject, body } = values;
+    
+    if (!subject && !body) {
+      toast({
+        title: "Empty Draft",
+        description: "Please add content to your email before saving it as a draft",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Make sure the coaches are included in the form data
+    values.coachIds = selectedCoaches;
+    values.enableFollowUp = enableFollowUp;
+    values.followUpDays = followUpDays;
+    values.isDraft = true;
+    
+    saveDraftMutation.mutate(values);
+  };
+
+  // Format schedule information for display
+  const formatScheduleInfo = () => {
+    if (!scheduleDate) return '';
+    
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    const scheduleDateOnly = new Date(scheduleDate);
+    scheduleDateOnly.setHours(0, 0, 0, 0);
+    
+    let dayText = formatDate(scheduleDate);
+    if (scheduleDateOnly.getTime() === today.getTime()) {
+      dayText = "Today";
+    } else if (scheduleDateOnly.getTime() === tomorrow.getTime()) {
+      dayText = "Tomorrow";
+    }
+    
+    return `Scheduled for ${dayText} at ${scheduleTime}`;
+  };
+  
+  // Handle scheduling email
+  const handleScheduleEmail = () => {
+    if (!scheduleDate) {
+      toast({
+        title: "Schedule Date Required",
+        description: "Please select a date and time to schedule this email.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const now = new Date();
+    if (scheduleDate <= now) {
+      toast({
+        title: "Invalid Schedule Date",
+        description: "Please select a future date and time to schedule this email.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const values = form.getValues();
+    
+    // Validate required fields
+    if (!values.subject || !values.body) {
+      toast({
+        title: "Missing information",
+        description: "Please fill in both subject and message body",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Validate coach selection
+    if (selectedCoaches.length === 0) {
+      toast({
+        title: "No recipients selected",
+        description: "Please select at least one coach to send the email to",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Set the coaches in the form data
+    values.coachIds = selectedCoaches;
+    values.enableFollowUp = enableFollowUp;
+    values.followUpDays = followUpDays;
+    
+    // Combine date and time
+    const [hours, minutes] = scheduleTime.split(':').map(Number);
+    const scheduledDate = new Date(scheduleDate);
+    scheduledDate.setHours(hours, minutes, 0, 0);
+    
+    scheduleEmailMutation.mutate({
+      ...values,
+      scheduledDate
+    });
+  };
+
+  // Handle form submission
+  const onSubmit = (data: EmailFormValues) => {
+    if (!data.coachIds || data.coachIds.length === 0) {
+      // Ensure coachIds is properly set from selectedCoaches
+      data.coachIds = selectedCoaches;
+    }
+    
+    // Set follow-up options
+    data.enableFollowUp = enableFollowUp;
+    data.followUpDays = followUpDays;
+    
+    // Validate required fields
+    if (!data.subject || !data.body) {
+      toast({
+        title: "Missing information",
+        description: "Please fill in both subject and message body",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Validate coach selection
+    if (data.coachIds.length === 0) {
+      toast({
+        title: "No recipients selected",
+        description: "Please select at least one coach to send the email to",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (isScheduleMode && scheduleDate) {
+      // Combine date and time
+      const [hours, minutes] = scheduleTime.split(':').map(Number);
+      const scheduledDate = new Date(scheduleDate);
+      scheduledDate.setHours(hours, minutes, 0, 0);
+      
+      scheduleEmailMutation.mutate({
+        ...data,
+        scheduledDate
+      });
+    } else {
+      sendEmailMutation.mutate(data);
+    }
+  };
+
+  // Reset all filters
+  const resetFilters = () => {
+    setSportFilter("all-sports");
+    setStatusFilter("all-statuses");
+    setDivisionFilter("all-divisions");
+    setStateFilter("all-states");
+    setSearchQuery("");
+  };
+  
+  // Reset form when dialog closes
+  const onDialogOpenChange = (open: boolean) => {
+    if (!open) {
+      form.reset();
+      aiForm.reset();
+      setSelectedCoaches([]);
+      setSelectAll(false);
+      setPreviewMode(false);
+      setPreviewCoach(null);
+      setIsUsingAI(false);
+      setAIResponse(null);
+      setAIError(null);
+      resetFilters();
+      setShowAdvancedFilters(false);
+      setIsScheduleMode(false);
+      setScheduleDate(undefined);
+      setScheduleTime("12:00");
+      setEnableFollowUp(false);
+      setFollowUpDays(3);
+    }
+    setIsComposeOpen(open);
+  };
+
+  // Handle mailbox selection
+  const handleMailboxChange = (value: string) => {
+    setActiveMailbox(value);
+    setCurrentPage(1);
+  };
+
+  // Render email status icon based on status
+  const renderEmailStatusIcon = (status: string) => {
+    switch (status) {
+      case 'replied':
+        return <MailCheck className="h-4 w-4 text-green-500" />;
+      case 'draft':
+        return <Save className="h-4 w-4 text-gray-500" />;
+      case 'scheduled':
+        return <Clock3 className="h-4 w-4 text-blue-500" />;
+      default:
+        return <Mail className="h-4 w-4 text-gray-500" />;
+    }
+  };
+
+  return (
+    <div className="flex flex-col h-[calc(100vh-150px)]">
+      <div className="flex justify-between items-center mb-4 px-2">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-800">Email Center</h1>
+          <p className="text-gray-600">Send, track and manage your coach communications</p>
+        </div>
+      </div>
+
+      {/* Email inbox layout */}
+      <div className="flex flex-1 bg-white rounded-lg shadow overflow-hidden">
+        {/* Left sidebar */}
+        <div className="w-56 bg-gray-50 border-r border-gray-200">
+          <div className="p-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-gray-700">Mailbox</h3>
+            </div>
+            
+            <Button 
+              className="w-full mb-2" 
+              onClick={() => setIsComposeOpen(true)}
+            >
+              <SendIcon className="h-4 w-4 mr-2" />
+              Compose
+            </Button>
+            
+            <nav className="space-y-1 mt-4">
+              <button 
+                onClick={() => handleMailboxChange("sent")}
+                className={`flex items-center w-full px-3 py-2 text-sm font-medium rounded-md ${activeMailbox === "sent" ? "bg-primary text-white" : "text-gray-700 hover:bg-gray-100"}`}
+              >
+                <SendIcon className="h-4 w-4 mr-2" />
+                Sent
+                <span className={`ml-auto ${activeMailbox === "sent" ? "bg-white bg-opacity-30" : "bg-gray-200"} rounded-full px-2 py-0.5 text-xs`}>
+                  {Array.isArray(emails) ? emails.filter((email: any) => !email.isDraft && !email.scheduledDate)?.length : 0}
+                </span>
+              </button>
+              <button 
+                onClick={() => handleMailboxChange("responses")}
+                className={`flex items-center w-full px-3 py-2 text-sm font-medium rounded-md ${activeMailbox === "responses" ? "bg-primary text-white" : "text-gray-700 hover:bg-gray-100"}`}
+              >
+                <CheckCircleIcon className="h-4 w-4 mr-2" />
+                Responses
+                <span className={`ml-auto ${activeMailbox === "responses" ? "bg-white bg-opacity-30" : "bg-gray-200"} rounded-full px-2 py-0.5 text-xs`}>
+                  {Array.isArray(emails) ? emails.filter((email: any) => email?.status === 'replied')?.length : 0}
+                </span>
+              </button>
+              <button 
+                onClick={() => handleMailboxChange("drafts")}
+                className={`flex items-center w-full px-3 py-2 text-sm font-medium rounded-md ${activeMailbox === "drafts" ? "bg-primary text-white" : "text-gray-700 hover:bg-gray-100"}`}
+              >
+                <Save className="h-4 w-4 mr-2" />
+                Drafts
+                <span className={`ml-auto ${activeMailbox === "drafts" ? "bg-white bg-opacity-30" : "bg-gray-200"} rounded-full px-2 py-0.5 text-xs`}>
+                  {Array.isArray(emails) ? emails.filter((email: any) => email?.isDraft === true)?.length : 0}
+                </span>
+              </button>
+              <button 
+                onClick={() => handleMailboxChange("scheduled")}
+                className={`flex items-center w-full px-3 py-2 text-sm font-medium rounded-md ${activeMailbox === "scheduled" ? "bg-primary text-white" : "text-gray-700 hover:bg-gray-100"}`}
+              >
+                <CalendarIcon className="h-4 w-4 mr-2" />
+                Scheduled
+                <span className={`ml-auto ${activeMailbox === "scheduled" ? "bg-white bg-opacity-30" : "bg-gray-200"} rounded-full px-2 py-0.5 text-xs`}>
+                  {Array.isArray(emails) ? emails.filter((email: any) => email?.scheduledDate !== undefined)?.length : 0}
+                </span>
+              </button>
+            </nav>
+          </div>
+        </div>
+
+        {/* Main email content area */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Search and filter bar */}
+          <div className="p-4 border-b border-gray-200 bg-white">
+            <div className="flex items-center">
+              <div className="flex items-center w-full max-w-lg bg-gray-100 rounded-md px-3 py-2">
+                <SearchIcon className="h-4 w-4 text-gray-500 mr-2" />
+                <input 
+                  type="text" 
+                  placeholder="Search emails..." 
+                  className="flex-1 bg-transparent border-none focus:outline-none text-sm"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+              <div className="ml-2">
+                <Button variant="outline" size="sm" className="flex items-center">
+                  <FilterIcon className="h-4 w-4 mr-1" />
+                  Filter
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Email list */}
+          <div className="flex-1 overflow-auto">
+            {isLoadingEmails ? (
+              <div className="animate-pulse p-6 space-y-4">
+                <div className="h-10 bg-gray-200 rounded w-full"></div>
+                <div className="h-10 bg-gray-200 rounded w-full"></div>
+                <div className="h-10 bg-gray-200 rounded w-full"></div>
+                <div className="h-10 bg-gray-200 rounded w-full"></div>
+                <div className="h-10 bg-gray-200 rounded w-full"></div>
+              </div>
+            ) : (
+              <>
+                <div className="divide-y divide-gray-200">
+                  {currentEmails && currentEmails.length > 0 ? (
+                    currentEmails.map((email: any) => {
+                      const coach = Array.isArray(coaches)
+                        ? coaches.find((c: any) => c.id === email.coachId)
+                        : null;
+                      return (
+                        <div 
+                          key={email.id} 
+                          className="p-4 hover:bg-gray-50 cursor-pointer flex items-center"
+                        >
+                          <div className="mr-4 flex-shrink-0">
+                            {renderEmailStatusIcon(email.status)}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex justify-between">
+                              <h4 className="text-sm font-medium truncate">
+                                {coach ? `${coach.firstName} ${coach.lastName}` : 'Unknown'}
+                              </h4>
+                              <span className="text-xs text-gray-500">
+                                {new Date(email.sentAt || email.createdAt).toLocaleDateString()}
+                              </span>
+                            </div>
+                            <div className="flex items-center text-xs text-gray-500 mt-1">
+                              {coach && <SchoolWithLogo school={coach.school} size="sm" />}
+                            </div>
+                            <p className="mt-1 text-sm truncate">{email.subject}</p>
+                            <p className="mt-1 text-xs text-gray-500 line-clamp-1">{email.body}</p>
+                          </div>
+                          <div className="ml-4">
+                            {email.status === 'replied' && (
+                              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                                Replied
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="flex flex-col items-center justify-center p-12 text-gray-500">
+                      <Mail className="h-12 w-12 mb-4 text-gray-300" />
+                      <p className="mb-2">No emails in this folder</p>
+                      <p className="text-sm">
+                        {activeMailbox === "sent" ? "Send an email to coaches to get started" :
+                         activeMailbox === "responses" ? "Coaches' responses will appear here" :
+                         activeMailbox === "drafts" ? "Save drafts for emails you want to send later" :
+                         "Schedule emails to be sent automatically"}
+                      </p>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Pagination controls */}
+                {filteredEmails.length > emailsPerPage && (
+                  <div className="flex justify-center items-center space-x-2 p-4 border-t border-gray-200">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                      disabled={currentPage === 1}
+                    >
+                      Previous
+                    </Button>
+                    <div className="text-sm">
+                      Page {currentPage} of {totalPages}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                      disabled={currentPage === totalPages}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+      {/* Compose Email Dialog */}
+      <Dialog open={isComposeOpen} onOpenChange={onDialogOpenChange}>
+        <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold">Compose Email</DialogTitle>
+            <DialogDescription>
+              Create personalized outreach to college coaches
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-4">
+            {/* Left Column - Recipients */}
+            <div className="lg:col-span-1 border-r pr-4">
+              <h3 className="text-lg font-medium mb-3 flex items-center">
+                <UserRound className="h-4 w-4 mr-2" />
+                Recipients
+                <Badge className="ml-2" variant="secondary">{selectedCoaches.length}</Badge>
+              </h3>
+              
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Input 
+                    type="text" 
+                    placeholder="Search coaches..." 
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="text-sm"
+                  />
+                </div>
+                
+                <div className="flex flex-wrap gap-2">
+                  <Select
+                    value={sportFilter}
+                    onValueChange={setSportFilter}
+                  >
+                    <SelectTrigger className="w-full text-sm">
+                      <SelectValue placeholder="Filter by sport" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all-sports">All Sports</SelectItem>
+                      {uniqueSports.map((sport) => (
+                        <SelectItem key={sport} value={sport}>{sport}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  
+                  <Select
+                    value={statusFilter}
+                    onValueChange={setStatusFilter}
+                  >
+                    <SelectTrigger className="w-full text-sm">
+                      <SelectValue placeholder="Filter by status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all-statuses">All Statuses</SelectItem>
+                      {uniqueStatuses.map((status) => (
+                        <SelectItem key={status} value={status}>{status}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  
+                  <div className="w-full mt-1">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                      className="w-full flex items-center justify-between" 
+                      type="button"
+                    >
+                      <span>Advanced Filters</span>
+                      {showAdvancedFilters ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                  
+                  {showAdvancedFilters && (
+                    <div className="space-y-2 w-full p-2 bg-gray-50 rounded-md border">
+                      <Select
+                        value={divisionFilter}
+                        onValueChange={setDivisionFilter}
+                      >
+                        <SelectTrigger className="w-full text-sm">
+                          <SelectValue placeholder="Filter by division" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all-divisions">All Divisions</SelectItem>
+                          {uniqueDivisions.map((division) => (
+                            <SelectItem key={division} value={division}>{division}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      
+                      <Select
+                        value={stateFilter}
+                        onValueChange={setStateFilter}
+                      >
+                        <SelectTrigger className="w-full text-sm">
+                          <SelectValue placeholder="Filter by state" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all-states">All States</SelectItem>
+                          {uniqueStates.map((state) => (
+                            <SelectItem key={state} value={state}>{state}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={resetFilters}
+                        className="w-full mt-2 text-xs"
+                      >
+                        Reset All Filters
+                      </Button>
+                    </div>
+                  )}
+                </div>
+                
+                <div className="flex items-center mb-2">
+                  <Checkbox 
+                    id="select-all" 
+                    checked={selectAll}
+                    onCheckedChange={handleSelectAll}
+                  />
+                  <Label htmlFor="select-all" className="ml-2 text-sm font-medium">
+                    Select All ({filteredCoaches?.length || 0})
+                  </Label>
+                </div>
+              </div>
+              
+              <ScrollArea className="h-[300px] mt-2 rounded-md">
+                <div className="space-y-1">
+                  {filteredCoaches?.map((coach: Coach) => (
+                    <div key={coach.id} className="flex items-start p-2 hover:bg-gray-50 rounded">
+                      <Checkbox 
+                        className="mt-1"
+                        checked={selectedCoaches.includes(coach.id)}
+                        onCheckedChange={(checked) => 
+                          handleCoachCheckbox(coach.id, !!checked)
+                        }
+                      />
+                      <div className="ml-3 flex-1 min-w-0">
+                        <div className="font-medium text-sm">{coach.firstName} {coach.lastName}</div>
+                        <div className="text-xs text-gray-500 truncate">{coach.email}</div>
+                        <div className="flex items-center gap-2 mt-1">
+                          <div className="text-xs text-gray-700">{coach.school}</div>
+                          <Badge
+                            variant={coach.status === "Interested" ? "default" : 
+                                    coach.status === "Not Available" ? "destructive" : 
+                                    "secondary"}
+                            className="text-[10px] py-0 px-1"
+                          >
+                            {coach.status || "New"}
+                          </Badge>
+                        </div>
+                      </div>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        className="text-xs h-6"
+                        onClick={() => handleSelectPreviewCoach(coach)}
+                      >
+                        Preview
+                      </Button>
+                    </div>
+                  ))}
+                  
+                  {filteredCoaches?.length === 0 && (
+                    <div className="py-6 text-center text-gray-500 text-sm">
+                      No coaches match your filters
+                    </div>
+                  )}
+                </div>
+              </ScrollArea>
+              
+              <input
+                type="hidden"
+                value={selectedCoaches.join(',')}
+                onChange={(e) => form.setValue('coachIds', e.target.value)}
+              />
+            </div>
+            
+            {/* Right Column - Email Compose */}
+            <div className="lg:col-span-2">
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 justify-between">
+                  <div className="flex-1">
+                    <Label>Template</Label>
+                    <Select 
+                      onValueChange={(value) => handleTemplateSelect(value)}
+                      value={selectedTemplate || ""}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a template" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Array.isArray(templates) && templates.map((template: EmailTemplate) => (
+                          <SelectItem 
+                            key={template.id} 
+                            value={template.id.toString()}
+                          >
+                            {template.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="flex-shrink-0">
+                    <Button
+                      type="button"
+                      variant={isUsingAI ? "default" : "outline"}
+                      onClick={() => setIsUsingAI(!isUsingAI)}
+                      className="gap-2"
+                    >
+                      <Sparkles className="h-4 w-4" />
+                      AI Writer
+                    </Button>
+                  </div>
+                </div>
+                
+                {isUsingAI && (
+                  <Card className="mb-4 border-primary/30 shadow-sm">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-lg flex items-center">
+                        <Sparkles className="h-4 w-4 mr-2 text-primary" />
+                        AI Email Generator
+                      </CardTitle>
+                      <CardDescription>
+                        Automatically create a personalized email using your profile data
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-2">
+                          <Label className="w-24">Email Tone</Label>
+                          <Select
+                            value={aiForm.getValues().tone}
+                            onValueChange={(value) => aiForm.setValue('tone', value as any)}
+                          >
+                            <SelectTrigger className="flex-1">
+                              <SelectValue placeholder="Select a tone" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="professional">Professional</SelectItem>
+                              <SelectItem value="friendly">Friendly</SelectItem>
+                              <SelectItem value="persuasive">Persuasive</SelectItem>
+                              <SelectItem value="enthusiastic">Enthusiastic</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                          <Label className="w-24">Focus On</Label>
+                          <Select
+                            value={aiForm.getValues().focus}
+                            onValueChange={(value) => aiForm.setValue('focus', value as any)}
+                          >
+                            <SelectTrigger className="flex-1">
+                              <SelectValue placeholder="Select focus" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="academic">Academic Achievements</SelectItem>
+                              <SelectItem value="athletic">Athletic Achievements</SelectItem>
+                              <SelectItem value="both">Both Equally</SelectItem>
+                              <SelectItem value="program">Program Fit</SelectItem>
+                              <SelectItem value="culture">Team Culture</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                          <Label className="w-24">Length</Label>
+                          <Select
+                            value={aiForm.getValues().length}
+                            onValueChange={(value) => aiForm.setValue('length', value as any)}
+                          >
+                            <SelectTrigger className="flex-1">
+                              <SelectValue placeholder="Select length" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="brief">Brief (2-3 paragraphs)</SelectItem>
+                              <SelectItem value="standard">Standard (3-4 paragraphs)</SelectItem>
+                              <SelectItem value="detailed">Detailed (4-5 paragraphs)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        <Button 
+                          type="button"
+                          disabled={aiGenerateLoading}
+                          onClick={handleSubmitAI(handleGenerateAI)}
+                          className="w-full mt-2"
+                        >
+                          {aiGenerateLoading ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                              Generating Email...
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="h-4 w-4 mr-1" />
+                              Generate Email
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+                
+                <div>
+                  <Label>Subject Line</Label>
+                  <Input
+                    placeholder="Write a compelling subject line"
+                    value={form.getValues().subject}
+                    onChange={(e) => form.setValue('subject', e.target.value)}
+                  />
+                </div>
+                
+                <div>
+                  <Label>Message</Label>
+                  <Textarea
+                    className="min-h-[200px]"
+                    placeholder="Write your personalized message to the coach(es)"
+                    value={form.getValues().body}
+                    onChange={(e) => form.setValue('body', e.target.value)}
+                  />
+                  {previewCoach && (
+                    <div className="mt-2 flex gap-2 items-center text-sm text-gray-500">
+                      <AlertCircle className="h-3 w-3" />
+                      <span>Preview mode: showing personalized email for {previewCoach.firstName} {previewCoach.lastName}</span>
+                    </div>
+                  )}
+                </div>
+                
+                <div className="flex items-center gap-3 mt-4">
+                  <div className="space-x-2">
+                    <Checkbox
+                      id="enable-follow-up"
+                      checked={enableFollowUp}
+                      onCheckedChange={(checked) => setEnableFollowUp(!!checked)}
+                    />
+                    <Label htmlFor="enable-follow-up" className="text-sm">
+                      Schedule automatic follow-up
+                    </Label>
+                  </div>
+                  
+                  {enableFollowUp && (
+                    <div className="flex items-center gap-2">
+                      <Label className="text-sm whitespace-nowrap">after</Label>
+                      <Select
+                        value={followUpDays.toString()}
+                        onValueChange={(value) => setFollowUpDays(parseInt(value))}
+                      >
+                        <SelectTrigger className="w-[90px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(days => (
+                            <SelectItem key={days} value={days.toString()}>
+                              {days} {days === 1 ? 'day' : 'days'}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </div>
+                
+                <div className="flex justify-between mt-6">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setIsComposeOpen(false)}
+                  >
+                    Cancel
+                  </Button>
+                  
+                  <div className="space-x-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        const values = form.getValues();
+                        values.status = "draft";
+                        if (enableFollowUp)
+                          values.followUpDays = followUpDays;
+                        onSubmit(values);
+                      }}
+                    >
+                      <Save className="h-4 w-4 mr-2" />
+                      Save as Draft
+                    </Button>
+                    
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        const values = form.getValues();
+                        values.status = "sent";
+                        if (enableFollowUp)
+                          values.followUpDays = followUpDays;
+                        onSubmit(values);
+                      }}
+                    >
+                      <SendIcon className="h-4 w-4 mr-2" />
+                      Send Now
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>    </div>
+  );
+}
