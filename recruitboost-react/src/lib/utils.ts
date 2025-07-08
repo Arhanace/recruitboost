@@ -30,20 +30,21 @@ export function formatTime(date: Date | string): string {
 export function createEmailBody(template: string, placeholders: Record<string, string>): string {
   let result = template;
   
-  for (const [key, value] of Object.entries(placeholders)) {
-    const regex = new RegExp(`{{${key}}}`, "g");
+  Object.entries(placeholders).forEach(([key, value]) => {
+    const regex = new RegExp(`{{${key}}}`, 'g');
     result = result.replace(regex, value);
-  }
+  });
   
   return result;
 }
 
 export function getInitials(name: string): string {
-  const names = name.split(' ');
-  if (names.length === 1) {
-    return names[0].substring(0, 2).toUpperCase();
-  }
-  return names.map(n => n.charAt(0)).join('').substring(0, 2).toUpperCase();
+  return name
+    .split(' ')
+    .map(n => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
 }
 
 export function truncateText(text: string, maxLength: number): string {

@@ -1,48 +1,72 @@
-import { Switch, Route, useLocation } from "wouter";
-import { queryClient } from "./lib/queryClient";
-import { QueryClientProvider } from "@tanstack/react-query";
-import { Toaster } from "@/components/ui/toaster";
+import { Route, Switch } from "wouter";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "@/components/ui/theme-provider";
+import { Toaster } from "@/components/ui/toaster";
+import Layout from "@/components/layout/layout";
 import SplashPage from "@/pages/splash";
 import Dashboard from "@/pages/dashboard";
+import Coaches from "@/pages/coaches";
+import Emails from "@/pages/emails";
+import Tasks from "@/pages/tasks";
+import Profile from "@/pages/profile";
+import Settings from "@/pages/settings";
 
-function Router() {
-  const [location] = useLocation();
-
-  // Show splash page for root and splash routes
-  if (location === "/" || location === "/splash") {
-    return (
-      <Switch>
-        <Route path="/" component={SplashPage} />
-        <Route path="/splash" component={SplashPage} />
-      </Switch>
-    );
-  }
-
-  // For other routes, show the dashboard
-  return (
-    <Switch>
-      <Route path="/dashboard" component={Dashboard} />
-      <Route>
-        {() => {
-          // Redirect to splash for unknown routes
-          const [, setLocation] = useLocation();
-          setLocation("/splash");
-          return null;
-        }}
-      </Route>
-    </Switch>
-  );
-}
+// Create a client
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 function App() {
   return (
-    <ThemeProvider defaultTheme="light">
-      <QueryClientProvider client={queryClient}>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme">
+        <Switch>
+          <Route path="/" component={SplashPage} />
+          <Route path="/dashboard">
+            <Layout>
+              <Dashboard />
+            </Layout>
+          </Route>
+          <Route path="/coaches">
+            <Layout>
+              <Coaches />
+            </Layout>
+          </Route>
+          <Route path="/emails">
+            <Layout>
+              <Emails />
+            </Layout>
+          </Route>
+          <Route path="/tasks">
+            <Layout>
+              <Tasks />
+            </Layout>
+          </Route>
+          <Route path="/profile">
+            <Layout>
+              <Profile />
+            </Layout>
+          </Route>
+          <Route path="/settings">
+            <Layout>
+              <Settings />
+            </Layout>
+          </Route>
+          <Route>
+            {/* 404 - Redirect to dashboard */}
+            <Layout>
+              <Dashboard />
+            </Layout>
+          </Route>
+        </Switch>
         <Toaster />
-        <Router />
-      </QueryClientProvider>
-    </ThemeProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
   );
 }
 

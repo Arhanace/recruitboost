@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Trophy, MessageSquare, BarChart4, Mail, School, ArrowRight } from "lucide-react";
+import { Trophy, BarChart4, Mail, School, ArrowRight } from "lucide-react";
 
 export default function SplashPage() {
   const [loginOpen, setLoginOpen] = useState(false);
