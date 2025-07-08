@@ -9,7 +9,8 @@ import {
   Settings, 
   Trophy,
   Menu,
-  X
+  X,
+  LogOut
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -39,24 +40,24 @@ export default function Layout({ children }: LayoutProps) {
       {sidebarOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
           <div className="fixed inset-0 bg-black/50" onClick={() => setSidebarOpen(false)} />
-          <div className="fixed inset-y-0 left-0 w-64 bg-white">
+          <div className="fixed inset-y-0 left-0 w-64 bg-white shadow-xl">
             <Sidebar currentPath={location} onNavigate={setLocation} onClose={() => setSidebarOpen(false)} />
           </div>
         </div>
       )}
 
       {/* Desktop sidebar */}
-      <div className="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-50 lg:block lg:w-64 lg:bg-white lg:border-r">
+      <div className="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-50 lg:block lg:w-64 lg:bg-white lg:shadow-lg">
         <Sidebar currentPath={location} onNavigate={setLocation} />
       </div>
 
       {/* Main content */}
       <div className="lg:pl-64">
         {/* Top navigation for mobile */}
-        <div className="sticky top-0 z-40 lg:hidden bg-white border-b px-4 py-3">
+        <div className="sticky top-0 z-40 lg:hidden bg-white/95 backdrop-blur-sm shadow-sm border-b px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <Trophy className="h-6 w-6 text-primary" />
+              <Trophy className="h-6 w-6 text-blue-600" />
               <span className="text-lg font-bold text-gray-800">RecruitBoost</span>
             </div>
             <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(true)}>
@@ -66,7 +67,7 @@ export default function Layout({ children }: LayoutProps) {
         </div>
 
         {/* Page content */}
-        <main className="min-h-screen">
+        <main className="min-h-screen bg-gray-50">
           {children}
         </main>
       </div>
@@ -83,12 +84,16 @@ function Sidebar({
   onNavigate: (path: string) => void;
   onClose?: () => void;
 }) {
+  const handleLogout = () => {
+    window.location.href = "/";
+  };
+
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col bg-white">
       {/* Header */}
-      <div className="flex items-center justify-between p-6 border-b">
+      <div className="flex items-center justify-between p-6 border-b border-gray-200">
         <div className="flex items-center space-x-2">
-          <Trophy className="h-6 w-6 text-primary" />
+          <Trophy className="h-6 w-6 text-blue-600" />
           <span className="text-lg font-bold text-gray-800">RecruitBoost</span>
         </div>
         {onClose && (
@@ -99,21 +104,23 @@ function Sidebar({
       </div>
 
       {/* User info */}
-      <div className="p-6 border-b">
+      <div className="p-6 border-b border-gray-200 bg-gray-50">
         <div className="flex items-center space-x-3">
-          <Avatar>
+          <Avatar className="ring-2 ring-blue-100">
             <AvatarImage src={mockUser.avatar} alt={mockUser.name} />
-            <AvatarFallback>{mockUser.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+            <AvatarFallback className="bg-blue-600 text-white font-semibold">
+              {mockUser.name.split(' ').map(n => n[0]).join('')}
+            </AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-gray-900 truncate">{mockUser.name}</p>
+            <p className="text-sm font-semibold text-gray-900 truncate">{mockUser.name}</p>
             <p className="text-xs text-gray-500 truncate">{mockUser.sport} • Class of {mockUser.graduationYear}</p>
           </div>
         </div>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-4 space-y-1">
+      <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
         {navigation.map((item) => {
           const isActive = currentPath === item.href;
           return (
@@ -124,13 +131,16 @@ function Sidebar({
                 onClose?.();
               }}
               className={cn(
-                "w-full flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors",
+                "w-full flex items-center px-3 py-3 text-sm font-medium rounded-lg transition-all duration-200 group",
                 isActive
-                  ? "bg-primary text-primary-foreground"
+                  ? "bg-blue-600 text-white shadow-sm"
                   : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
               )}
             >
-              <item.icon className="mr-3 h-5 w-5" />
+              <item.icon className={cn(
+                "mr-3 h-5 w-5 transition-colors",
+                isActive ? "text-white" : "text-gray-500 group-hover:text-gray-700"
+              )} />
               {item.name}
             </button>
           );
@@ -138,8 +148,16 @@ function Sidebar({
       </nav>
 
       {/* Footer */}
-      <div className="p-4 border-t">
-        <p className="text-xs text-gray-500 text-center">
+      <div className="p-4 border-t border-gray-200 bg-gray-50">
+        <Button
+          variant="ghost"
+          className="w-full justify-start text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+          onClick={handleLogout}
+        >
+          <LogOut className="mr-3 h-5 w-5" />
+          Sign Out
+        </Button>
+        <p className="text-xs text-gray-500 text-center mt-3">
           © 2025 RecruitBoost
         </p>
       </div>

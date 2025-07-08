@@ -1,5 +1,3 @@
-import { useLocation } from "wouter";
-import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -7,252 +5,248 @@ import { Trophy, BarChart4, Mail, School, ArrowRight } from "lucide-react";
 
 export default function SplashPage() {
   const [loginOpen, setLoginOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("login");
-  const [, setLocation] = useLocation();
 
-  // Mock sign in function - in real app this would handle authentication
-  const handleSignIn = () => {
-    setLoginOpen(false);
-    setLocation("/dashboard");
+  const handleDemoLogin = () => {
+    // Navigate to dashboard
+    window.location.href = "/dashboard";
   };
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="container mx-auto px-4 py-6">
-        {/* Header */}
-        <header className="flex justify-between items-center mb-12">
-          <div className="flex items-center space-x-2">
-            <Trophy className="h-8 w-8 text-primary" />
-            <span className="text-2xl font-bold text-gray-800">RecruitBoost</span>
-          </div>
-          <div className="flex items-center space-x-3">
-            <Button 
-              variant="outline" 
-              onClick={() => {
-                setActiveTab("register");
-                setLoginOpen(true);
-              }}
-              className="font-medium"
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50">
+      {/* Navigation Header */}
+      <nav className="bg-white/80 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center space-x-2">
+              <Trophy className="h-8 w-8 text-blue-600" />
+              <span className="text-2xl font-bold text-gray-900">RecruitBoost</span>
+            </div>
+            <button
+              onClick={() => setLoginOpen(true)}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-all duration-200 transform hover:scale-105"
             >
-              Sign Up
-            </Button>
-            <Button onClick={() => {
-              setActiveTab("login");
-              setLoginOpen(true);
-            }}>Sign In</Button>
+              Get Started
+            </button>
           </div>
-        </header>
+        </div>
+      </nav>
 
-        {/* Hero Section */}
-        <div className="max-w-screen-xl mx-auto py-12">
-          <div className="flex flex-col lg:flex-row">
-            <div className="lg:w-1/2 lg:pr-12">
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold mb-6 text-gray-900 leading-tight">
-                Connect with <span className="text-primary">College Coaches</span>
-              </h1>
-              <p className="text-lg text-gray-600 mb-8 max-w-lg">
-                Take control of your athletic future with our platform that helps you reach out to coaches, manage your recruitment, and find your perfect college fit.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-4 mb-8">
-                <Button 
-                  size="lg" 
-                  onClick={() => {
-                    setActiveTab("register");
-                    setLoginOpen(true);
-                  }} 
-                  className="py-6"
-                >
-                  Get Started
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
-                <Button size="lg" variant="outline" className="py-6">
-                  Learn More
-                </Button>
-              </div>
-              
-              <div className="flex items-center text-gray-600">
-                <div className="flex -space-x-2 mr-4">
-                  <div className="w-8 h-8 rounded-full bg-blue-100 border-2 border-white flex items-center justify-center text-xs font-medium">JT</div>
-                  <div className="w-8 h-8 rounded-full bg-green-100 border-2 border-white flex items-center justify-center text-xs font-medium">KL</div>
-                  <div className="w-8 h-8 rounded-full bg-yellow-100 border-2 border-white flex items-center justify-center text-xs font-medium">SP</div>
-                </div>
-                <span className="text-sm">Joined by <span className="font-medium">25,000+</span> athletes</span>
-              </div>
-            </div>
-            
-            <div className="lg:w-1/2 mt-12 lg:mt-0">
-              <div className="relative">
-                <div className="absolute -right-4 -top-4 w-full h-full bg-primary/10 rounded-lg -z-10 transform translate-x-4 translate-y-2"></div>
-                <img 
-                  src="https://images.unsplash.com/photo-1519766304817-4f37bda74a26?auto=format&fit=crop&q=80"
-                  alt="College athlete"
-                  className="rounded-lg shadow-lg object-cover w-full h-[450px]"
-                />
-              </div>
+      {/* Hero Section */}
+      <section className="pt-20 pb-32 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-4xl mx-auto text-center">
+          <div className="animate-fade-in">
+            <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6 leading-tight">
+              Your Path to
+              <span className="text-blue-600 block">Athletic Success</span>
+            </h1>
+            <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto leading-relaxed">
+              The complete platform for student-athletes to manage recruiting, connect with coaches, 
+              and take control of their athletic future.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <button
+                onClick={() => setLoginOpen(true)}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-lg font-semibold text-lg transition-all duration-200 transform hover:scale-105 flex items-center justify-center group"
+              >
+                Start Your Journey
+                <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+              </button>
+              <button
+                onClick={() => setLoginOpen(true)}
+                className="border-2 border-gray-300 hover:border-blue-600 text-gray-700 hover:text-blue-600 px-8 py-4 rounded-lg font-semibold text-lg transition-all duration-200"
+              >
+                View Demo
+              </button>
             </div>
           </div>
         </div>
+      </section>
 
-        {/* Stats */}
-        <div className="max-w-screen-xl mx-auto my-16">
-          <div className="bg-white border border-gray-100 shadow-sm rounded-xl grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8 p-8">
-            <div className="text-center">
-              <p className="text-3xl font-bold text-primary">10,000+</p>
-              <p className="text-gray-500">Coaches</p>
-            </div>
-            <div className="text-center">
-              <p className="text-3xl font-bold text-primary">1,500+</p>
-              <p className="text-gray-500">Schools</p>
-            </div>
-            <div className="text-center">
-              <p className="text-3xl font-bold text-primary">25,000+</p>
-              <p className="text-gray-500">Athletes</p>
-            </div>
-            <div className="text-center">
-              <p className="text-3xl font-bold text-primary">98%</p>
-              <p className="text-gray-500">Success Rate</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Features */}
-        <div className="max-w-screen-xl mx-auto py-16">
+      {/* Features Section */}
+      <section className="py-20 bg-white">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold">
-              How RecruitBoost <span className="text-primary">Works</span>
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+              Everything You Need to Succeed
             </h2>
-            <p className="text-lg text-gray-600 mt-4 max-w-2xl mx-auto">
-              Our platform makes recruiting simple with powerful tools designed specifically for student-athletes
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+              Streamline your recruiting process with powerful tools designed for today's student-athletes
             </p>
           </div>
-          
-          <div className="grid md:grid-cols-3 gap-8">
-            <div className="bg-white rounded-xl p-8 shadow-sm hover:shadow-md transition-all border border-gray-100">
-              <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mb-6">
-                <School className="h-6 w-6 text-primary" />
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+            <div className="text-center group hover:scale-105 transition-transform duration-200">
+              <div className="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-blue-200 transition-colors">
+                <School className="h-8 w-8 text-blue-600" />
               </div>
-              <h3 className="text-xl font-semibold mb-3">Find Coaches</h3>
-              <p className="text-gray-600 mb-4">
-                Search our database of 10,000+ college coaches across all divisions, filtered by your sport, location, and academic preferences.
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Find Coaches</h3>
+              <p className="text-gray-600">
+                Search and connect with coaches from thousands of college programs
               </p>
             </div>
-            
-            <div className="bg-white rounded-xl p-8 shadow-sm hover:shadow-md transition-all border border-gray-100">
-              <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mb-6">
-                <Mail className="h-6 w-6 text-primary" />
+
+            <div className="text-center group hover:scale-105 transition-transform duration-200">
+              <div className="bg-green-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-green-200 transition-colors">
+                <Mail className="h-8 w-8 text-green-600" />
               </div>
-              <h3 className="text-xl font-semibold mb-3">Contact Coaches</h3>
-              <p className="text-gray-600 mb-4">
-                Send personalized emails with our AI-powered writing assistant that helps you create impressive outreach messages.
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Email Management</h3>
+              <p className="text-gray-600">
+                Professional email templates and tracking for effective communication
               </p>
             </div>
-            
-            <div className="bg-white rounded-xl p-8 shadow-sm hover:shadow-md transition-all border border-gray-100">
-              <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mb-6">
-                <BarChart4 className="h-6 w-6 text-primary" />
+
+            <div className="text-center group hover:scale-105 transition-transform duration-200">
+              <div className="bg-purple-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-purple-200 transition-colors">
+                <BarChart4 className="h-8 w-8 text-purple-600" />
               </div>
-              <h3 className="text-xl font-semibold mb-3">Track Progress</h3>
-              <p className="text-gray-600 mb-4">
-                Manage your entire recruitment journey with our task management system and communication tracking.
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Progress Tracking</h3>
+              <p className="text-gray-600">
+                Monitor your recruiting progress and manage tasks efficiently
+              </p>
+            </div>
+
+            <div className="text-center group hover:scale-105 transition-transform duration-200">
+              <div className="bg-yellow-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-yellow-200 transition-colors">
+                <Trophy className="h-8 w-8 text-yellow-600" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Profile Builder</h3>
+              <p className="text-gray-600">
+                Create compelling athletic profiles that showcase your achievements
               </p>
             </div>
           </div>
         </div>
+      </section>
 
-        {/* CTA */}
-        <div className="max-w-screen-xl mx-auto mb-24">
-          <div className="bg-primary rounded-xl overflow-hidden">
-            <div className="px-8 py-12 md:px-12 md:py-16 relative">
-              <div className="absolute right-0 top-0 w-72 h-72 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl"></div>
-              
-              <div className="relative max-w-3xl mx-auto text-center z-10">
-                <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">Ready to Find Your Perfect College Match?</h2>
-                <p className="text-lg text-white/90 mb-8 max-w-2xl mx-auto">
-                  Join thousands of athletes who have successfully connected with college coaches using RecruitBoost.
-                </p>
-                <div className="flex flex-col sm:flex-row justify-center gap-4">
-                  <Button 
-                    size="lg" 
-                    className="bg-white hover:bg-gray-100 text-primary py-6"
-                    onClick={() => {
-                      setActiveTab("register");
-                      setLoginOpen(true);
-                    }}
-                  >
-                    Create Free Account
-                    <ArrowRight className="ml-2 h-5 w-5" />
-                  </Button>
-                  <Button 
-                    size="lg" 
-                    variant="outline" 
-                    className="border-white bg-white text-primary hover:bg-gray-100 py-6"
-                    onClick={() => {
-                      setActiveTab("login");
-                      setLoginOpen(true);
-                    }}
-                  >
-                    Sign In
-                  </Button>
-                </div>
-              </div>
+      {/* Stats Section */}
+      <section className="py-20 bg-blue-600">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h2 className="text-3xl md:text-4xl font-bold text-white mb-12">
+            Trusted by Student-Athletes Nationwide
+          </h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+            <div>
+              <div className="text-4xl md:text-5xl font-bold text-white mb-2">2,500+</div>
+              <div className="text-blue-100">Student-Athletes</div>
+            </div>
+            <div>
+              <div className="text-4xl md:text-5xl font-bold text-white mb-2">500+</div>
+              <div className="text-blue-100">College Programs</div>
+            </div>
+            <div>
+              <div className="text-4xl md:text-5xl font-bold text-white mb-2">89%</div>
+              <div className="text-blue-100">Success Rate</div>
+            </div>
+            <div>
+              <div className="text-4xl md:text-5xl font-bold text-white mb-2">24/7</div>
+              <div className="text-blue-100">Support</div>
             </div>
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* Login/Register Dialog */}
+      {/* CTA Section */}
+      <section className="py-20 bg-gray-50">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6">
+            Ready to Take Control of Your Recruiting?
+          </h2>
+          <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
+            Join thousands of student-athletes who are already using RecruitBoost to achieve their dreams.
+          </p>
+          <button
+            onClick={() => setLoginOpen(true)}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-lg font-semibold text-lg transition-all duration-200 transform hover:scale-105"
+          >
+            Get Started Today
+          </button>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="bg-gray-900 py-12">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col md:flex-row justify-between items-center">
+            <div className="flex items-center space-x-2 mb-4 md:mb-0">
+              <Trophy className="h-8 w-8 text-blue-400" />
+              <span className="text-2xl font-bold text-white">RecruitBoost</span>
+            </div>
+            <div className="text-gray-400 text-center md:text-right">
+              <p>&copy; 2025 RecruitBoost. Empowering the next generation of athletes.</p>
+            </div>
+          </div>
+        </div>
+      </footer>
+
+      {/* Login/Demo Modal */}
       <Dialog open={loginOpen} onOpenChange={setLoginOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Welcome to RecruitBoost</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Trophy className="h-6 w-6 text-blue-600" />
+              Welcome to RecruitBoost
+            </DialogTitle>
             <DialogDescription>
-              Sign in to your account or create a new one
+              Choose how you'd like to get started with our platform
             </DialogDescription>
           </DialogHeader>
-          
-          <Tabs defaultValue={activeTab} value={activeTab} onValueChange={setActiveTab} className="w-full">
+
+          <Tabs defaultValue="demo" className="w-full">
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="login">Sign In</TabsTrigger>
-              <TabsTrigger value="register">Sign Up</TabsTrigger>
+              <TabsTrigger value="demo">Demo Access</TabsTrigger>
+              <TabsTrigger value="signup">Sign Up</TabsTrigger>
             </TabsList>
             
-            <TabsContent value="login" className="space-y-4 py-4">
-              <div className="space-y-4">
-                <Button 
-                  className="w-full"
-                  onClick={handleSignIn}
+            <TabsContent value="demo" className="space-y-4">
+              <div className="text-center py-6">
+                <p className="text-gray-600 mb-6">
+                  Explore RecruitBoost with our interactive demo featuring sample data and full functionality.
+                </p>
+                <button
+                  onClick={handleDemoLogin}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg font-medium transition-colors"
                 >
-                  Continue with Demo
-                </Button>
-              </div>
-              
-              <div className="pt-2 text-center text-sm text-gray-500">
-                Don't have an account? <span 
-                  className="text-primary underline cursor-pointer" 
-                  onClick={() => setActiveTab("register")}
-                >
-                  Sign up
-                </span>
+                  Enter Demo Dashboard
+                </button>
               </div>
             </TabsContent>
             
-            <TabsContent value="register" className="space-y-4 py-4">
+            <TabsContent value="signup" className="space-y-4">
               <div className="space-y-4">
-                <Button 
-                  className="w-full"
-                  onClick={handleSignIn}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                  <input
+                    type="text"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Enter your full name"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                  <input
+                    type="email"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Enter your email"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Sport</label>
+                  <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    <option value="">Select your sport</option>
+                    <option value="basketball">Basketball</option>
+                    <option value="football">Football</option>
+                    <option value="soccer">Soccer</option>
+                    <option value="baseball">Baseball</option>
+                    <option value="tennis">Tennis</option>
+                    <option value="swimming">Swimming</option>
+                  </select>
+                </div>
+                <button
+                  onClick={handleDemoLogin}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg font-medium transition-colors"
                 >
-                  Get Started with Demo
-                </Button>
-              </div>
-              
-              <div className="pt-2 text-center text-sm text-gray-500">
-                Already have an account? <span 
-                  className="text-primary underline cursor-pointer" 
-                  onClick={() => setActiveTab("login")}
-                >
-                  Sign in
-                </span>
+                  Create Account
+                </button>
               </div>
             </TabsContent>
           </Tabs>
