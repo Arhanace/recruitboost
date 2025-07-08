@@ -17,8 +17,8 @@ export default function SplashPage() {
   };
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="container mx-auto px-4 py-6">
+    <div className="min-h-screen bg-white w-full">
+      <div className="container mx-auto px-4 py-6 max-w-7xl">
         {/* Header */}
         <header className="flex justify-between items-center mb-12">
           <div className="flex items-center space-x-2">
